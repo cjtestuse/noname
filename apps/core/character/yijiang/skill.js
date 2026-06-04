@@ -1367,6 +1367,7 @@ const skills = {
 		},
 	},
 	xindangxian: {
+		derivation: "xinfuli",
 		trigger: { player: "phaseBegin" },
 		forced: true,
 		audio: "dangxian",
@@ -1398,7 +1399,7 @@ const skills = {
 						return;
 					}
 					await player.loseHp();
-					const card = get.cardPile(card => card.name == "sha");
+					const card = get.discardPile(card => card.name == "sha");
 					if (card) {
 						await player.gain(card, "gain2");
 					}
@@ -2692,8 +2693,8 @@ const skills = {
 					forced: true,
 				})
 				.forResult();
-			if (result.bool && result.autochoose && result.cards?.length === result.rawcards.length) {
-				player.removeSkills("jiexun");
+			if (result?.cards?.length > 0 && result.autochoose && result.cards?.length === result.rawcards?.length) {
+				await player.removeSkills("jiexun");
 				player.addSkill("funan_jiexun");
 			}
 		},
@@ -2751,8 +2752,8 @@ const skills = {
 					})
 					.forResult();
 
-				if (result.bool && result.autochoose && result.cards?.length === result.rawcards.length) {
-					player.removeMark("xinjiexun", player.countMark("xinjiexun"), false);
+				if (result?.cards?.length > 0 && result.autochoose && result.cards?.length === result.rawcards?.length) {
+					player.clearMarkMark("xinjiexun", false);
 					player.addSkill("funan_jiexun");
 				}
 			}

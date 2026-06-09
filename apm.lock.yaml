@@ -1,0 +1,52 @@
+lockfile_version: '1'
+generated_at: '2026-06-09T15:33:32.661757+00:00'
+apm_version: 0.18.0
+dependencies:
+- repo_url: kuangshen04/skills
+  host: github.com
+  resolved_commit: da345b2226188682508df37321d36e1f784d2078
+  package_type: apm_package
+  deployed_files:
+  - .agents/skills/caveman
+  - .agents/skills/create-workflow-skill
+  - .agents/skills/diagnose
+  - .agents/skills/explore-docs
+  - .agents/skills/extract-interface
+  - .agents/skills/generate-glossary
+  - .agents/skills/grill-me
+  - .agents/skills/grill-with-docs
+  - .agents/skills/handoff
+  - .agents/skills/prototype
+  - .agents/skills/record-decision
+  - .agents/skills/review-workflow-skill
+  - .agents/skills/setup-agent-project
+  - .agents/skills/tdd
+  - .agents/skills/to-issues
+  - .agents/skills/to-prd
+  - .agents/skills/triage
+  - .agents/skills/update-docs
+  - .agents/skills/update-workflow-skill
+  - .agents/skills/write-a-skill
+  - .agents/skills/zoom-out
+  - .claude/skills/caveman
+  - .claude/skills/create-workflow-skill
+  - .claude/skills/diagnose
+  - .claude/skills/explore-docs
+  - .claude/skills/extract-interface
+  - .claude/skills/generate-glossary
+  - .claude/skills/grill-me
+  - .claude/skills/grill-with-docs
+  - .claude/skills/handoff
+  - .claude/skills/prototype
+  - .claude/skills/record-decision
+  - .claude/skills/review-workflow-skill
+  - .claude/skills/setup-agent-project
+  - .claude/skills/tdd
+  - .claude/skills/to-issues
+  - .claude/skills/to-prd
+  - .claude/skills/triage
+  - .claude/skills/update-docs
+  - .claude/skills/update-workflow-skill
+  - .claude/skills/write-a-skill
+  - .claude/skills/zoom-out
+  content_hash: sha256:a8b84a8a02f2d47674287bbcdee999a3e2ebf1579bc67e26ab5d983870c49fae

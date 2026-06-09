@@ -17,3 +17,8 @@ package-lock.json
 # Windows
 ehthumbs.db
 Thumbs.db
+
+# APM dependencies
+.agents/
+.claude/
+apm_modules/

@@ -1,0 +1,11 @@
+name: noname
+version: 1.0.0
+targets:
+    - claude
+    - codex
+dependencies:
+    apm: 
+        - kuangshen04/skills
+    mcp: []
+includes: auto
+scripts: {}

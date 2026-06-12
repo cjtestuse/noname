@@ -10,8 +10,14 @@ import { moderned_characters } from "../game/config.json";
 const root = join(import.meta.dirname, "..");
 const pnpmOutputPrefix = "node_modules/.pnpm/";
 
+function normalizeOutputPath(filePath: string) {
+	return filePath
+		.replace(pnpmOutputPrefix, "vendor/pnpm/")
+		.replaceAll("/node_modules/", "/");
+}
+
 function getOutputFileName(name: string) {
-	return `${name.replace(pnpmOutputPrefix, "vendor/pnpm/")}.js`;
+	return `${normalizeOutputPath(name)}.js`;
 }
 
 /**
@@ -53,6 +59,7 @@ async function main() {
 		{ src: "noname", dest: "src" },
 		{ src: "typings", dest: "src" },
 		{ src: "noname.js", dest: "src" },
+		{ src: "404.html", dest: "" },
 	];
 
 	/**

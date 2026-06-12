@@ -6,7 +6,9 @@ const require = createRequire(import.meta.url);
 const pnpmOutputPrefix = "node_modules/.pnpm/";
 
 function normalizeOutputPath(filePath: string) {
-	return filePath.replace(pnpmOutputPrefix, "vendor/pnpm/");
+	return filePath
+		.replace(pnpmOutputPrefix, "vendor/pnpm/")
+		.replaceAll("/node_modules/", "/");
 }
 
 export default function vitePluginJIT(importMap: Record<string, string> = {}): Plugin {

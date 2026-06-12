@@ -11,6 +11,18 @@ function normalizeOutputPath(filePath: string) {
 		.replaceAll("/node_modules/", "/");
 }
 
+function escapeRegExp(value: string) {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function rewriteExternalHtmlReferences(html: string, imports: Record<string, string>) {
+	for (const [source, target] of Object.entries(imports)) {
+		const pattern = new RegExp(`\\b(src|href)=(["'])${escapeRegExp(source)}\\2`, "g");
+		html = html.replace(pattern, (_match, attribute, quote) => `${attribute}=${quote}${target}${quote}`);
+	}
+	return html;
+}
+
 export default function vitePluginJIT(importMap: Record<string, string> = {}): Plugin {
 	let root = process.cwd();
 	let isBuild = false;
@@ -68,7 +80,26 @@ export default function vitePluginJIT(importMap: Record<string, string> = {}): P
 
 	const jit = document.createElement("script");
 	jit.type = "module";
-	jit.textContent = \`(async function () {
+	jit.textContent = \`async function waitForServiceWorkerController() {
+		if (navigator.serviceWorker.controller) return true;
+
+		await navigator.serviceWorker.ready;
+		if (navigator.serviceWorker.controller) return true;
+
+		return new Promise(resolve => {
+			const timer = setTimeout(() => resolve(false), 3000);
+			navigator.serviceWorker.addEventListener(
+				"controllerchange",
+				() => {
+					clearTimeout(timer);
+					resolve(true);
+				},
+				{ once: true }
+			);
+		});
+	}
+
+	(async function () {
 		const scope = new URL("./", location.href).toString();
 		// if (import.meta.env.DEV) {
 		// 	if ("serviceWorker" in navigator) {
@@ -103,6 +134,7 @@ export default function vitePluginJIT(importMap: Record<string, string> = {}): P
 				updateViaCache: "all",
 				scope,
 			});
+			const canUseServiceWorker = await waitForServiceWorkerController();
 			// 接收消息
 			navigator.serviceWorker.addEventListener("message", e => {
 				if (e.data?.type === "reload") {
@@ -112,7 +144,7 @@ export default function vitePluginJIT(importMap: Record<string, string> = {}): P
 			// 发送消息
 			// navigator.serviceWorker.controller?.postMessage({ action: "reload" });
 			// await registration.update().catch(e => console.error("worker update失败", e));
-			if (sessionStorage.getItem("canUseTs") !== "true") {
+			if (canUseServiceWorker && sessionStorage.getItem("canUseTs") !== "true") {
 				const path = "/jit-test.ts";
 				console.log((await import(/* @vite-ignore */ path)).text);
 				sessionStorage.setItem("canUseTs", "true");
@@ -135,6 +167,15 @@ export default function vitePluginJIT(importMap: Record<string, string> = {}): P
 	document.head.appendChild(script);
 })();`
 			);
+
+			const jitImportMap = path.resolve("dist/jit/import-map.json");
+			fs.mkdirSync(path.dirname(jitImportMap), { recursive: true });
+			fs.writeFileSync(jitImportMap, JSON.stringify(resolvedImportMap, null, 2));
+
+			const indexHtml = path.resolve("dist/index.html");
+			if (fs.existsSync(indexHtml)) {
+				fs.writeFileSync(indexHtml, rewriteExternalHtmlReferences(fs.readFileSync(indexHtml, "utf8"), resolvedImportMap));
+			}
 		},
 
 		transformIndexHtml(html) {

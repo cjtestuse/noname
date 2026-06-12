@@ -1,17 +1,160 @@
 //@ts-nocheck
+function normalizeResourcePath(path) {
+	let value = String(path ?? "").replace(/\\/g, "/");
+	try {
+		const url = new URL(value, location.href);
+		if (url.origin === location.origin) {
+			value = decodeURIComponent(url.pathname);
+		}
+	} catch {}
+
+	return value.replace(/^\/+/, "").replace(/^\.\//, "").replace(/\/+/g, "/");
+}
+
+function getResourceUrl(path) {
+	return new URL(normalizeResourcePath(path), `${location.origin}/`).href;
+}
+
+async function hasStaticFileIndex() {
+	try {
+		const response = await fetch("/game/filelist.json", { method: "HEAD" });
+		return response.ok;
+	} catch {
+		return false;
+	}
+}
+
+function installStaticFileFunctions(game) {
+	let fileListPromise;
+	const getFileIndex = async () => {
+		if (!fileListPromise) {
+			fileListPromise = fetch("/game/filelist.json")
+				.then(response => {
+					if (!response.ok) throw new Error("Cannot load static file list.");
+					return response.json();
+				})
+				.then(files => {
+					const fileSet = new Set(files.map(normalizeResourcePath));
+					const dirSet = new Set([""]);
+					for (const file of fileSet) {
+						const parts = file.split("/");
+						for (let i = 1; i < parts.length; i++) {
+							dirSet.add(parts.slice(0, i).join("/"));
+						}
+					}
+					return { fileSet, dirSet };
+				});
+		}
+		return fileListPromise;
+	};
+
+	game.checkFile = function checkFile(fileName, callback, onerror) {
+		const path = normalizeResourcePath(fileName);
+		getFileIndex()
+			.then(({ fileSet, dirSet }) => {
+				if (fileSet.has(path)) {
+					callback?.(1);
+				} else if (dirSet.has(path)) {
+					callback?.(0);
+				} else {
+					callback?.(-1);
+				}
+			})
+			.catch(() => {
+				fetch(getResourceUrl(path), { method: "HEAD" })
+					.then(response => callback?.(response.ok ? 1 : -1))
+					.catch(onerror);
+			});
+	};
+
+	game.checkDir = function checkDir(dir, callback, onerror) {
+		const path = normalizeResourcePath(dir).replace(/\/$/, "");
+		getFileIndex()
+			.then(({ fileSet, dirSet }) => {
+				if (dirSet.has(path)) {
+					callback?.(1);
+				} else if (fileSet.has(path)) {
+					callback?.(0);
+				} else {
+					callback?.(-1);
+				}
+			})
+			.catch(onerror);
+	};
+
+	game.readFile = function readFile(fileName, callback = () => {}, error = () => {}) {
+		fetch(getResourceUrl(fileName))
+			.then(response => {
+				if (!response.ok) throw new Error(`Cannot read file: ${fileName}`);
+				return response.arrayBuffer();
+			})
+			.then(callback)
+			.catch(error);
+	};
+
+	game.readFileAsText = function readFileAsText(fileName, callback = () => {}, error = () => {}) {
+		fetch(getResourceUrl(fileName))
+			.then(response => {
+				if (!response.ok) throw new Error(`Cannot read file: ${fileName}`);
+				return response.text();
+			})
+			.then(callback)
+			.catch(error);
+	};
+
+	game.getFileList = function getFileList(dir, callback = () => {}, onerror) {
+		const path = normalizeResourcePath(dir).replace(/\/$/, "");
+		const prefix = path ? `${path}/` : "";
+		getFileIndex()
+			.then(({ fileSet, dirSet }) => {
+				if (path && !dirSet.has(path)) {
+					callback([], []);
+					return;
+				}
+
+				const folders = new Set();
+				const files = new Set();
+				for (const file of fileSet) {
+					if (!file.startsWith(prefix)) continue;
+					const rest = file.slice(prefix.length);
+					if (!rest || rest.startsWith(".") || rest.startsWith("_")) continue;
+
+					const slashIndex = rest.indexOf("/");
+					if (slashIndex === -1) {
+						files.add(rest);
+					} else {
+						const folder = rest.slice(0, slashIndex);
+						if (!folder.startsWith(".") && !folder.startsWith("_")) folders.add(folder);
+					}
+				}
+				callback([...folders].sort(), [...files].sort());
+			})
+			.catch(onerror);
+	};
+
+	game.removeFile = function removeFile(fileName, callback = () => {}, error = () => {}) {
+		callback(new Error("Static deployment does not support file removal."));
+	};
+}
+
 export default async function browserReady({ lib, game }) {
 	lib.path = (await import("path-browserify-esm")).default;
 
-	try {
-		await fetch(`/checkFile?fileName=noname.js`)
-			.then(response => response.json())
-			.then(result => {
-				if (!result?.success) throw new Error(result.errorMsg);
-			});
-	} catch (e) {
-		console.error("文件读写函数初始化失败:", e);
-		return;
-	}
+	const fileApiAvailable = (await hasStaticFileIndex())
+		? false
+		: await fetch(`/checkFile?fileName=noname.js`)
+				.then(async response => {
+					if (!response.ok) throw new Error(`文件接口响应异常: ${response.status}`);
+					return response.json();
+				})
+				.then(result => {
+					if (!result?.success) throw new Error(result.errorMsg);
+					return true;
+				})
+				.catch(e => {
+					console.warn("文件读写接口不可用，启用静态只读资源模式:", e);
+					return false;
+				});
 
 	game.export = function (data, name) {
 		if (typeof data === "string") {
@@ -35,6 +178,11 @@ export default async function browserReady({ lib, game }) {
 	game.open = function (url) {
 		window.open(url);
 	};
+
+	if (!fileApiAvailable) {
+		installStaticFileFunctions(game);
+		return;
+	}
 
 	/**
 	 * 检查指定的路径是否是一个文件

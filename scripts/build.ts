@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs/promises";
+import path from "node:path";
 
 function run(command: string) {
 	const result = spawnSync(command, {
@@ -14,6 +15,24 @@ function run(command: string) {
 	if (result.status !== 0) {
 		process.exit(result.status ?? 1);
 	}
+}
+
+async function listFiles(dir: string, base = dir) {
+	const files: string[] = [];
+	const entries = await fs.readdir(dir, { withFileTypes: true });
+
+	await Promise.all(
+		entries.map(async entry => {
+			const fullPath = path.join(dir, entry.name);
+			if (entry.isDirectory()) {
+				files.push(...(await listFiles(fullPath, base)));
+			} else if (entry.isFile()) {
+				files.push(path.relative(base, fullPath).split(path.sep).join("/"));
+			}
+		})
+	);
+
+	return files;
 }
 
 run("pnpm -F noname... build");
@@ -32,3 +51,8 @@ await Promise.all([
 	fs.cp("LICENSE", "dist/LICENSE"),
 	fs.cp("README.md", "dist/README.md")
 ]);
+
+const files = await listFiles("dist");
+files.push("game/filelist.json");
+files.sort();
+await fs.writeFile("dist/game/filelist.json", JSON.stringify(files, null, "\t"));

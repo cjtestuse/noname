@@ -10,23 +10,17 @@ import "vue/dist/vue.esm-browser.js";
 		lib.device = device;
 
 		// 预加载脚本
-		const path = "/preload.js";
-		const { default: preload } = await import(/* @vite-ignore */ path).catch(() => {
-			// Electron平台
-			if (typeof window.require === "function") {
-				return import("./init/node.js");
-			} else {
-				// 仅在“确实是移动端客户端/cordova环境”时才走 cordova 分支；
-				// 否则（如 macOS 桌面 Safari/Chrome、普通手机浏览器）应走 browser 分支，避免请求 /cordova.js 并卡死在 deviceready。
-				const isCordovaLike = typeof window.cordova !== "undefined" || typeof window.NonameAndroidBridge !== "undefined" || typeof window.noname_shijianInterfaces !== "undefined";
-
-				if (import.meta.env.DEV || typeof lib.device == "undefined" || !isCordovaLike) {
-					return import("./init/browser.js");
-				} else {
-					return import("./init/cordova.js");
-				}
-			}
-		});
+		const preloadPath = "/preload.js";
+		const loadPreload = () => import(/* @vite-ignore */ preloadPath);
+		// 仅在“确实是移动端客户端/cordova环境”时才走 cordova 分支；
+		// 否则（如 macOS 桌面 Safari/Chrome、普通手机浏览器）应走 browser 分支，避免请求 /cordova.js 并卡死在 deviceready。
+		const isCordovaLike = typeof window.cordova !== "undefined" || typeof window.NonameAndroidBridge !== "undefined" || typeof window.noname_shijianInterfaces !== "undefined";
+		const { default: preload } =
+			typeof window.require === "function"
+				? await loadPreload().catch(() => import("./init/node.js"))
+				: import.meta.env.DEV || typeof lib.device == "undefined" || !isCordovaLike
+					? await import("./init/browser.js")
+					: await loadPreload().catch(() => import("./init/cordova.js"));
 		await preload({ lib, game, get, _status, ui, ai });
 
 		// GPL确认

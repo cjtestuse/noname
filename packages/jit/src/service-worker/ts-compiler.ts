@@ -1,11 +1,25 @@
 import ts from "typescript";
 
-let importMap: Record<string, string>;
+let importMapPromise: Promise<Record<string, string>> | undefined;
+
+async function loadImportMap() {
+	if (!importMapPromise) {
+		importMapPromise = fetch("/jit/import-map.json")
+			.then(response => {
+				if (!response.ok) return {};
+				return response.json();
+			})
+			.catch(() => ({}));
+	}
+
+	return importMapPromise;
+}
+
 /**
  * 将 import 路径根据 importmap 替换
  */
 async function applyImportMap(source: string, fileName: string) {
-	if (!importMap) importMap = await fetch("/jit/import-map.json").then(i => i.json());
+	const importMap = await loadImportMap();
 	const sourceFile = ts.createSourceFile(
 		fileName,
 		source,
@@ -64,9 +78,9 @@ async function applyImportMap(source: string, fileName: string) {
 }
 
 export async function compile(source: string, fileName: string) {
-	// const transformedSource = await applyImportMap(source, fileName);
+	const transformedSource = await applyImportMap(source, fileName);
 
-	const result = ts.transpileModule(source, {
+	const result = ts.transpileModule(transformedSource, {
 		compilerOptions: {
 			module: ts.ModuleKind.ES2015,
 			target: ts.ScriptTarget.ES2020,

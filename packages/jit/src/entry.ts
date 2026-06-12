@@ -1,4 +1,23 @@
 /// <reference types="vite/client" />
+async function waitForServiceWorkerController() {
+	if (navigator.serviceWorker.controller) return true;
+
+	await navigator.serviceWorker.ready;
+	if (navigator.serviceWorker.controller) return true;
+
+	return new Promise<boolean>(resolve => {
+		const timer = setTimeout(() => resolve(false), 3000);
+		navigator.serviceWorker.addEventListener(
+			"controllerchange",
+			() => {
+				clearTimeout(timer);
+				resolve(true);
+			},
+			{ once: true }
+		);
+	});
+}
+
 (async function () {
 	const scope = new URL("./", location.href).toString();
 	// if (import.meta.env.DEV) {
@@ -34,6 +53,7 @@
 			updateViaCache: "all",
 			scope,
 		});
+		const canUseServiceWorker = await waitForServiceWorkerController();
 		// 接收消息
 		navigator.serviceWorker.addEventListener("message", e => {
 			if (e.data?.type === "reload") {
@@ -43,7 +63,7 @@
 		// 发送消息
 		// navigator.serviceWorker.controller?.postMessage({ action: "reload" });
 		// await registration.update().catch(e => console.error("worker update失败", e));
-		if (sessionStorage.getItem("canUseTs") !== "true") {
+		if (canUseServiceWorker && sessionStorage.getItem("canUseTs") !== "true") {
 			const path = "/jit-test.ts";
 			console.log((await import(/* @vite-ignore */ path)).text);
 			sessionStorage.setItem("canUseTs", "true");

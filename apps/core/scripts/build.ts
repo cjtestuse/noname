@@ -1,5 +1,6 @@
 import { build } from "vite";
-import { join, dirname } from "path";
+import { join, dirname, resolve } from "path";
+import { fileURLToPath } from "node:url";
 import { existsSync, readdirSync } from "fs";
 import { Target, viteStaticCopy } from "vite-plugin-static-copy";
 import generateImportMap from "./vite-plugin-importmap";
@@ -224,6 +225,6 @@ interface IndividualContent {
 	moderned: boolean;
 }
 
-if (import.meta.main) {
+if (fileURLToPath(import.meta.url) === resolve(process.argv[1] ?? "")) {
 	await main();
 }

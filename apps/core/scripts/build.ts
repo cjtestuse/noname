@@ -8,6 +8,11 @@ import jit from "@noname/jit";
 
 import { moderned_characters } from "../game/config.json";
 const root = join(import.meta.dirname, "..");
+const pnpmOutputPrefix = "node_modules/.pnpm/";
+
+function getOutputFileName(name: string) {
+	return `${name.replace(pnpmOutputPrefix, "vendor/pnpm/")}.js`;
+}
 
 /**
  * 构建脚本入口。
@@ -147,8 +152,8 @@ async function buildSelf(target: string | string[], importMap: Record<string, st
 					preserveModulesRoot: "./",
 
 					// 去掉 hash
-					entryFileNames: "[name].js", // 入口文件
-					chunkFileNames: "[name].js", // 代码分块
+					entryFileNames: chunk => getOutputFileName(chunk.name), // 入口文件
+					chunkFileNames: chunk => getOutputFileName(chunk.name), // 代码分块
 					assetFileNames: "[name][extname]", // 静态资源
 				},
 				onwarn(warning, warn) {

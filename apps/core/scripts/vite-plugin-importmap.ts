@@ -3,6 +3,11 @@ import fs from "fs";
 import path from "path";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
+const pnpmOutputPrefix = "node_modules/.pnpm/";
+
+function normalizeOutputPath(filePath: string) {
+	return filePath.replace(pnpmOutputPrefix, "vendor/pnpm/");
+}
 
 export default function vitePluginJIT(importMap: Record<string, string> = {}): Plugin {
 	let root = process.cwd();
@@ -22,7 +27,7 @@ export default function vitePluginJIT(importMap: Record<string, string> = {}): P
 			for (const key in importMap) {
 				try {
 					const resolved = require.resolve(importMap[key]);
-					resolvedImportMap[key] = normalizePath("/" + path.relative(root, resolved));
+					resolvedImportMap[key] = normalizePath("/" + normalizeOutputPath(path.relative(root, resolved)));
 				} catch (e) {
 					resolvedImportMap[key] = importMap[key];
 				}

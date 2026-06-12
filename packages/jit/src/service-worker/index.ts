@@ -61,7 +61,7 @@ worker.addEventListener("fetch", (event: FetchEvent) => {
 
 	const url = new URL(request.url);
 	// 非相关请求
-	if (!["localhost", "127.0.0.1", "10.0.2.2"].includes(url.hostname)) return;
+	if (url.origin !== worker.location.origin) return;
 	if (!proxyedPath.some(i => url.pathname.startsWith(i))) return;
 
 	const strategy = strategies.find(s => s.match({ event, request, url }));
